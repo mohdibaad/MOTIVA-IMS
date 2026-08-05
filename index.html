@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IMS Integration — Action Tracker</title>
+<style>
+:root{
+  --ink:#1c2430;
+  --ink-soft:#5b6672;
+  --line:#dfe4ea;
+  --bg:#f4f6f8;
+  --panel:#ffffff;
+  --accent:#2e5aac;
+  --red:#c0392b; --red-bg:#fdecea; --red-line:#f1b7ae;
+  --orange:#b5690a; --orange-bg:#fff2e2; --orange-line:#f0c98a;
+  --green:#1f7a4d; --green-bg:#e9f7ef; --green-line:#a9dcbf;
+  --gray:#6b7280; --gray-bg:#eef0f2; --gray-line:#d3d8dd;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);}
+header{background:linear-gradient(135deg,#1c2b45,#2e5aac);color:#fff;padding:22px 28px;}
+header h1{margin:0;font-size:21px;font-weight:700;letter-spacing:.2px;}
+header p{margin:4px 0 0;font-size:13px;color:#cfe0f5;}
+.wrap{padding:20px 28px 60px;max-width:1500px;margin:0 auto;}
+
+.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+.card .num{font-size:26px;font-weight:700;line-height:1.1;}
+.card .lbl{font-size:12px;color:var(--ink-soft);margin-top:4px;text-transform:uppercase;letter-spacing:.4px;}
+.card.red{border-left:5px solid var(--red);} .card.red .num{color:var(--red);}
+.card.orange{border-left:5px solid var(--orange);} .card.orange .num{color:var(--orange);}
+.card.green{border-left:5px solid var(--green);} .card.green .num{color:var(--green);}
+.card.total{border-left:5px solid var(--accent);} .card.total .num{color:var(--accent);}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px;}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.filters select, .filters input{padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:#fff;color:var(--ink);}
+.filters input[type=text]{min-width:220px;}
+.filters label{font-size:12px;color:var(--ink-soft);margin-right:4px;}
+.filter-group{display:flex;align-items:center;gap:6px;}
+.legend{display:flex;gap:16px;margin-left:auto;font-size:12px;color:var(--ink-soft);}
+.legend span{display:inline-flex;align-items:center;gap:5px;}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block;}
+.dot.red{background:var(--red);} .dot.orange{background:var(--orange);} .dot.green{background:var(--green);}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{position:sticky;top:0;background:#eef1f5;text-align:left;padding:9px 10px;border-bottom:2px solid var(--line);cursor:pointer;white-space:nowrap;color:#334;}
+thead th:hover{background:#e4e9ef;}
+tbody td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+tbody tr.red{background:var(--red-bg);}
+tbody tr.orange{background:var(--orange-bg);}
+tbody tr.green{background:var(--green-bg);}
+tbody tr.gray{background:var(--gray-bg);}
+tbody tr:hover{filter:brightness(0.97);}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid;}
+.badge.red{color:var(--red);background:#fff;border-color:var(--red-line);}
+.badge.orange{color:var(--orange);background:#fff;border-color:var(--orange-line);}
+.badge.green{color:var(--green);background:#fff;border-color:var(--green-line);}
+.badge.gray{color:var(--gray);background:#fff;border-color:var(--gray-line);}
+.src{font-size:10.5px;font-weight:700;letter-spacing:.4px;color:#fff;padding:2px 6px;border-radius:4px;background:#7a8899;}
+.src.Replanning{background:#2e5aac;}
+.src.Tasks{background:#6d5ba6;}
+.src.RAID{background:#a6672e;}
+.src.Entry{background:#2e8f7a;}
+.desc{max-width:340px;}
+.owner{white-space:nowrap;font-weight:600;}
+td.email{white-space:nowrap;}
+.emailbtn{border:1px solid var(--line);background:#fff;color:var(--accent);padding:4px 9px;border-radius:6px;font-size:12px;cursor:pointer;}
+.emailbtn:hover{background:#eef2fb;}
+.count-row{font-size:12px;color:var(--ink-soft);margin:8px 2px;}
+.dirbar{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12px;color:var(--ink-soft);}
+.dirbar input{padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;}
+.dirbtn{border:1px solid var(--line);background:#f7f8fa;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;}
+.due{white-space:nowrap;}
+.overdue-tag{font-size:11px;font-weight:700;color:var(--red);}
+#toast{position:fixed;bottom:20px;right:20px;background:#1c2430;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;}
+#toast.show{opacity:1;}
+
+/* inline editing */
+.edit-select, .edit-date{border:1px solid transparent;background:transparent;font-size:12px;font-weight:600;padding:2px 4px;border-radius:5px;cursor:pointer;font-family:inherit;color:inherit;}
+.edit-select:hover, .edit-date:hover{border-color:var(--line);background:#fff;}
+.edit-select:focus, .edit-date:focus{border-color:var(--accent);background:#fff;outline:none;}
+.resetbtn{border:1px solid var(--line);background:#fff;color:var(--ink-soft);padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;}
+.resetbtn:hover{background:#fbeceb;color:var(--red);border-color:var(--red-line);}
+
+/* progress bars */
+.progress-title{font-size:12.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px;}
+.pbar-row{display:grid;grid-template-columns:190px 1fr 110px;align-items:center;gap:10px;margin-bottom:7px;font-size:12.5px;}
+.pbar-row .plabel{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);}
+.pbar-track{height:14px;border-radius:7px;background:var(--gray-bg);overflow:hidden;display:flex;}
+.pbar-seg{height:100%;}
+.pbar-seg.red{background:var(--red);}
+.pbar-seg.orange{background:var(--orange);}
+.pbar-seg.green{background:var(--green);}
+.pbar-seg.gray{background:var(--gray-line);}
+.pbar-count{color:var(--ink-soft);font-size:11.5px;white-space:nowrap;text-align:right;}
+.overall-bar .pbar-track{height:22px;border-radius:11px;}
+.progress-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+@media (max-width:980px){ .progress-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>IMS ⟷ SAP Integration — Action Item Tracker</h1>
+  <p id="asOf">Consolidated from Replanning · Tasks (Cenosco &amp; Motiva) · RAID · Entry &amp; Exit Criteria</p>
+</header>
+
+<div class="wrap">
+
+  <div class="cards" id="cards"></div>
+
+  <div class="panel">
+    <div class="progress-grid">
+      <div>
+        <p class="progress-title">Overall progress</p>
+        <div id="overallBar"></div>
+      </div>
+      <div style="text-align:right;">
+        <button class="resetbtn" onclick="resetEdits()">↺ Reset all edits made in this dashboard</button>
+      </div>
+    </div>
+    <div class="progress-grid" style="margin-top:16px;">
+      <div>
+        <p class="progress-title">By source sheet</p>
+        <div id="bySourceBars"></div>
+      </div>
+      <div>
+        <p class="progress-title">By owner (top by item count)</p>
+        <div id="byOwnerBars"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Source</label>
+        <select id="fSource"><option value="">All</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="fColor">
+          <option value="">All</option>
+          <option value="red">Overdue</option>
+          <option value="orange">In progress / pending</option>
+          <option value="green">Completed</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Owner</label>
+        <select id="fOwner"><option value="">All</option></select>
+      </div>
+      <div class="filter-group">
+        <input type="text" id="fSearch" placeholder="Search ID, description, comments…">
+      </div>
+      <div class="legend">
+        <span><i class="dot red"></i>Overdue</span>
+        <span><i class="dot orange"></i>In progress / pending</span>
+        <span><i class="dot green"></i>Completed</span>
+      </div>
+    </div>
+    <div class="dirbar">
+      <span>Owner email directory (saved in this browser):</span>
+      <input id="dirName" placeholder="Owner name, e.g. Cenosco (Franjo)" size="26">
+      <input id="dirEmail" placeholder="email@company.com" size="22">
+      <button class="dirbtn" onclick="saveDirEntry()">Save</button>
+      <span id="dirStatus"></span>
+    </div>
+    <div class="dirbar" style="margin-top:6px;">
+      <span>Email method:</span>
+      <select id="emailMethod" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;">
+        <option value="owa">Outlook Web (recommended — opens a browser tab, no mail app needed)</option>
+        <option value="mailto">Default mail app (mailto:)</option>
+      </select>
+      <span style="color:#8b95a1;">Power Automate flow below overrides this if set.</span>
+    </div>
+    <div class="dirbar" style="margin-top:6px;">
+      <span>Power Automate flow URL (optional — leave blank to use the method above):</span>
+      <input id="flowUrl" placeholder="https://prod-xx.westus.logic.azure.com/workflows/.../triggers/manual/paths/invoke?..." size="60">
+      <button class="dirbtn" onclick="saveFlowUrl()">Save</button>
+      <span id="flowStatus"></span>
+    </div>
+  </div>
+
+  <div class="count-row" id="countRow"></div>
+
+  <div class="panel" style="padding:0;overflow:auto;max-height:70vh;">
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th data-k="source">Source</th>
+          <th data-k="id">ID</th>
+          <th data-k="category">Area</th>
+          <th data-k="description">Description</th>
+          <th data-k="owner">Owner</th>
+          <th data-k="due_date">Due date</th>
+          <th data-k="status">Status</th>
+          <th>Email</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const RAW = [{"source": "Replanning", "id": "A001", "category": "RCM / Data alignment", "description": "Review and explain RCM Data Alignment flags", "owner": "Cenosco (Franjo)", "due_date": "2026-07-30", "priority": "3- Medium/Nice to have", "status": "Approved", "comments": "Added to Delta and presented to Motiva (Chris) on July 30. Approved."}, {"source": "Replanning", "id": "A002", "category": "RCM / Data alignment", "description": "Align Fulflo valves and SAP Object Type", "owner": "Motiva", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "Done", "comments": ""}, {"source": "Replanning", "id": "A003", "category": "RCM / Data alignment", "description": "CMMS Object type mapping", "owner": "Cenosco (Marko)", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "Done", "comments": ""}, {"source": "Replanning", "id": "A004", "category": "RCM / Data alignment", "description": "Delta reports review", "owner": "Motiva", "due_date": "2026-08-12", "priority": "2- High/Must", "status": "Done", "comments": ""}, {"source": "Replanning", "id": "A005", "category": "RCM / Data alignment", "description": "Delta reports feedback review", "owner": "Cenosco", "due_date": "2026-08-14", "priority": "2- High/Must", "status": "In progress", "comments": "Risk"}, {"source": "Replanning", "id": "A006", "category": "RCM / Data alignment", "description": "Add a report to RCM Dashboard", "owner": "Cenosco (Joanna)", "due_date": "2026-08-07", "priority": "3- Medium/Nice to have", "status": "Done", "comments": "\"Equipment created last week\" added to RCM production dashboard"}, {"source": "Replanning", "id": "Sign Off", "category": "RCM / Data alignment", "description": "Data alignment Sign Off", "owner": "Motiva", "due_date": "2026-08-14", "priority": "", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A007", "category": "PEI / Data alignment", "description": "Verify equipment details in PEI Delta Analysis (Manufacturer)", "owner": "Cenosco (Antun)", "due_date": "2026-07-31", "priority": "2- High/Must", "status": "Done", "comments": ""}, {"source": "Replanning", "id": "A008", "category": "PEI / Data alignment", "description": "All schedules and plans - EI", "owner": "Cenosco (Antun)", "due_date": "2026-07-31", "priority": "2- High/Must", "status": "Done", "comments": "All schedules?"}, {"source": "Replanning", "id": "A009", "category": "PEI / Data alignment", "description": "Add ERROR CMMS Status report to PEI Dashboard", "owner": "Cenosco (Joanna)", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "Done", "comments": "Added to production PEI dashboard \"Schedules grouped by SAP status\""}, {"source": "Replanning", "id": "A010", "category": "PEI / Data alignment", "description": "Investigate equipment present in IMS but missing from Delta", "owner": "Cenosco (Franjo)", "due_date": "2026-08-11", "priority": "2- High/Must", "status": "In progress", "comments": "Franjo to send a file with the comments"}, {"source": "Replanning", "id": "A011", "category": "PEI / Data alignment", "description": "Investigate equipment present in Delta but missing from IMS", "owner": "Cenosco (Franjo)", "due_date": "2026-08-11", "priority": "2- High/Must", "status": "In progress", "comments": "Franjo to send a file with the comments"}, {"source": "Replanning", "id": "A012", "category": "PEI / Data alignment", "description": "Align inactive IMS equipment with SAP status", "owner": "Cenosco (Antun)", "due_date": "2026-08-06", "priority": "2- High/Must", "status": "To do", "comments": "Email from Samuel from July 29: [EXTERNAL]Re: IMS SAP integration for Motiva - meeting notes 20260602\nCheck tabs in the excel file"}, {"source": "Replanning", "id": "A013", "category": "PEI / Data alignment", "description": "Unmatching equipment", "owner": "Cenosco (Antun)", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "To do", "comments": "Email from Samuel from July 30: [EXTERNAL]Re: IMS SAP integration for Motiva - meeting notes 20260602\nCheck tabs in the excel file"}, {"source": "Replanning", "id": "A014", "category": "PEI / Data alignment", "description": "Air cooler mappings", "owner": "Cenosco (Antun)", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "To do", "comments": "Email from Samuel from July 30: [EXTERNAL]Re: IMS SAP integration for Motiva - meeting notes 20260602\nCheck tabs in the excel file"}, {"source": "Replanning", "id": "A015", "category": "PEI / Data alignment", "description": "Equipment moved to a different unit", "owner": "Cenosco (Antun, Franjo, Marko)", "due_date": "2026-08-07", "priority": "1- Blocker/Show stopper", "status": "To do", "comments": "Risk"}, {"source": "Replanning", "id": "A016", "category": "PEI / Data alignment", "description": "CMMS Object type mapping", "owner": "Cenosco (Marko)", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "To do", "comments": "Ross confirmed the long-term intention is to improve Object Type consistency in SAP.\nFull cleanup is not expected before go-live.\nA follow-up session will be held to review the proposed Object Type mapping."}, {"source": "Replanning", "id": "A017", "category": "PEI / Data alignment", "description": "Configure SAP Release Date for PEI schedules and CAIRs", "owner": "Cenosco (Franjo)", "due_date": "2026-07-30", "priority": "3- Medium/Nice to have", "status": "Done", "comments": ""}, {"source": "Replanning", "id": "A018", "category": "PEI / Data alignment", "description": "Delta reports review", "owner": "Motiva", "due_date": "2026-08-12", "priority": "2- High/Must", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A019", "category": "PEI / Data alignment", "description": "Delta reports feedback review", "owner": "Cenosco", "due_date": "2026-08-17", "priority": "2- High/Must", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "Sign Off", "category": "PEI / Data alignment", "description": "Data alignment Sign Off", "owner": "Motiva", "due_date": "2026-08-21", "priority": "", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A020", "category": "PEI / Interface", "description": "Prevent interface from overwriting IMS equipment descriptions", "owner": "Motiva, Cenosco", "due_date": "?", "priority": "3- Medium/Nice to have", "status": "On Hold", "comments": "Cenosco has a configuration setting that supports this behavior. The only exception is when a new equipment is created, in that case, its description will be set to the description of its parent FLOC."}, {"source": "Replanning", "id": "A021", "category": "RCM & PEI / Interface", "description": "Validate ABC Indicator mapping for PEI and RCM", "owner": "Cenosco, Motiva", "due_date": "2026-08-11", "priority": "2- High/Must", "status": "Done", "comments": "This is configurable through IMS's settings. IMS curretly has the old and new mappings. The new ones need to be checked in both PEI and RCM environments, e.g. ABC ind \"D\" is missing in RCM. Note: the character limit for the description is 30 characters.\n \nIt's recommended to keep the old mappings just in case they are sent in the future."}, {"source": "Replanning", "id": "A022", "category": "RCM & PEI / Data alignment", "description": "Define and test Alternative Hierarchy View approach", "owner": "Motiva (Ross)", "due_date": "2026-08-04", "priority": "2- High/Must", "status": "To do", "comments": "Ross to revisit the SAP set-up and exports"}, {"source": "Replanning", "id": "A023", "category": "RCM & PEI / Interface", "description": "Corrective schedules CAIRs: Set the notification type based on the selected schedule category (cat1 or cat2).", "owner": "Cenosco (Sandi)", "due_date": "?", "priority": "2- High/Must", "status": "In progress", "comments": "Agreed"}, {"source": "Replanning", "id": "A024", "category": "RCM / Interface", "description": "Retest RCM UAT timezone issue for US3 and US4", "owner": "Cenosco (Joanna)", "due_date": "2026-08-20", "priority": "2- High/Must", "status": "In progress", "comments": "Low risk"}, {"source": "Replanning", "id": "Sign Off", "category": "RCM / SIT", "description": "SIT Sign Off", "owner": "Motiva", "due_date": "2026-08-25", "priority": "", "status": "To do", "comments": "Suggestion to have SIT by 21st Aug"}, {"source": "Replanning", "id": "Sign Off", "category": "RCM / UAT", "description": "UAT (Retest) Sign Off", "owner": "Motiva", "due_date": "2026-08-25", "priority": "", "status": "To do", "comments": "Suggestion"}, {"source": "Replanning", "id": "A025", "category": "PEI / Interface", "description": "Complete PEI SIT - Confirm solution for corrective schedule Notification Type [CR]", "owner": "Cenosco (Joanna)", "due_date": "2026-08-03", "priority": "2- High/Must", "status": "Blocked", "comments": ""}, {"source": "Replanning", "id": "A026", "category": "PEI / Interface", "description": "Complete PEI Demo", "owner": "Cenosco (Joanna)", "due_date": "2026-08-03", "priority": "2- High/Must", "status": "Blocked", "comments": ""}, {"source": "Replanning", "id": "Sign Off", "category": "PEI / SIT", "description": "SIT Sign Off", "owner": "Motiva", "due_date": "2026-08-03", "priority": "", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A027", "category": "PEI / Interface", "description": "Configure SAP priority for PEI schedules and CAIRs", "owner": "Motiva", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "To do", "comments": "Default maint. priority and MPs set to 5; CR prio is dynamic\nDiscuss with Ross the CR priority based on the SAP table: days vs priority from SAP 01 High, 02 Medium, 03 Low)\n\nSend date ranges sent with MoM Aug 4"}, {"source": "Replanning", "id": "A028", "category": "PEI / Interface", "description": "Verify equipment details in PEI payload", "owner": "Cenosco (Joanna)", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "In progress", "comments": "Ross requested an extract of manufacturer information from both PEI and RCM so the data can be loaded into SAP."}, {"source": "Replanning", "id": "A029", "category": "PEI / Interface", "description": "Confirm visibility of PEI ECH records in RCM", "owner": "Cenosco (Sandi), SAP", "due_date": "2026-08-07", "priority": "2- High/Must", "status": "In progress", "comments": "Set-up the dataset in IMSs\nRetest locally\nRetest with SAP"}, {"source": "Replanning", "id": "A030", "category": "PEI / Interface", "description": "Complete UAT PEI", "owner": "", "due_date": "2026-08-17", "priority": "2- High/Must", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "Sign Off", "category": "PEI / UAT", "description": "UAT Sign Off", "owner": "Motiva", "due_date": "2026-08-17", "priority": "", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "Sign Off", "category": "RCM & PEI / Go-live", "description": "Confirm go-live readiness", "owner": "Motiva", "due_date": "2026-08-18", "priority": "", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A031", "category": "RCM prod / Data alignment", "description": "Complete data alignment in production", "owner": "Cenosco (Franjo)", "due_date": "2026-08-25", "priority": "1- Blocker/Show stopper", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A032", "category": "PEI prod / Data alignment", "description": "Complete data alignment in production", "owner": "Cenosco (Antun)", "due_date": "2026-08-25", "priority": "1- Blocker/Show stopper", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A033", "category": "RCM & PEI prod / Data alignment", "description": "Sap Release date change to 365 days", "owner": "Cenosco (Franjo)", "due_date": "2026-08-25", "priority": "2- High/Must", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A034", "category": "RCM & PEI prod / Data alignment", "description": "Alternative view build in production", "owner": "Cenosco (Marko)", "due_date": "2026-08-25", "priority": "2- High/Must", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A035", "category": "RCM & PEI prod / Upgrade", "description": "Upgrade production to 4.12", "owner": "Cenosco (Joanna)", "due_date": "2026-08-13", "priority": "1- Blocker/Show stopper", "status": "In progress", "comments": "Option 2 \u2013 Full upgrade (IMS 4.12.1)\n\nUpgrade Migration, Acceptance, and then Production to IMS 4.12.1 to keep all environments aligned.\n\nTimeline: Up to 3 weeks.\n\nMotiva Mig sites RCM and PEI: Aug 6th\nMotiva Acc sites RCM and PEI: Aug 13th\nMotiva Prod sites RCM and PEI: Aug 20th"}, {"source": "Replanning", "id": "A036", "category": "RCM & PEI prod / Interface", "description": "Merge interfaces to production", "owner": "Cenosco (Igor)", "due_date": "2026-08-25", "priority": "1- Blocker/Show stopper", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A037", "category": "RCM & PEI prod / Go-live", "description": "Go-live", "owner": "Cenosco", "due_date": "2026-08-27", "priority": "1- Blocker/Show stopper", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A038", "category": "RCM & PEI prod / Hypercare", "description": "Hypercare", "owner": "Cenosco (Igor)", "due_date": "2026-09-11", "priority": "2- High/Must", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A039", "category": "RCM & PEI prod / PMO", "description": "Final Acceptance Form", "owner": "Cenosco (Joanna)", "due_date": "2026-09-11", "priority": "2- High/Must", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "A040", "category": "RCM & PEI prod / PMO", "description": "Project Closure", "owner": "Cenosco (Joanna)", "due_date": "2026-09-11", "priority": "2- High/Must", "status": "To do", "comments": ""}, {"source": "Replanning", "id": "Sign Off", "category": "RCM & PEI prod / Closure", "description": "Project closure confirmation", "owner": "Motiva", "due_date": "2026-09-11", "priority": "", "status": "To do", "comments": ""}, {"source": "Tasks", "id": "A014", "category": "Cenosco & Motiva", "description": "Provide missing mapping files / complete RCM mapping", "owner": "Ross", "due_date": "2026-05-29", "priority": "High", "status": "Done", "comments": "Cenosco will perform the data alignment based on the information already provided by the Motiva team."}, {"source": "Tasks", "id": "A015", "category": "Cenosco & Motiva", "description": "Confirm requirement for\u00a0historical notifications transfer (old notifications only) / RCM", "owner": "Cenosco + Motiva", "due_date": "2026-06-19", "priority": "Medium", "status": "Deferred", "comments": ""}, {"source": "Tasks", "id": "A016", "category": "Cenosco & Motiva", "description": "Evaluate inclusion of technical object name in equipment payload", "owner": "Cenosco", "due_date": "2026-06-11", "priority": "High", "status": "Done", "comments": "Motiva to confirm whether the technical object should be populated with the Equipment Name value.\n\nCenosco to check and configure the parameters. Igor to verify.\n\nEquipment name works and tested. We intend to leverage the Technical Object Sort Code in the equipment payload, for which the appropriate S/4 field mapping has already been completed."}, {"source": "Tasks", "id": "A017", "category": "Cenosco & Motiva", "description": "Validate ABC indicator mapping behavior via interface / RCM SIT", "owner": "Cenosco", "due_date": "2026-06-26", "priority": "High", "status": "Done", "comments": "Cenosco to resolve the connector issue: 18-19/06 Log verification; 19/06 - Upgrade path; 23-26 (to be confirmed based on the previous step) Upgrade\n\nRCM SIT completed"}, {"source": "Tasks", "id": "A018", "category": "Cenosco & Motiva", "description": "Fix FLOC movement procedure", "owner": "Cenosco", "due_date": "2026-06-09", "priority": "Medium", "status": "Done", "comments": "Issue solved"}, {"source": "Tasks", "id": "A019", "category": "Cenosco & Motiva", "description": "Provide FLOC category list (with descriptions)", "owner": "SAP", "due_date": "n/a", "priority": "Medium", "status": "Done", "comments": ""}, {"source": "Tasks", "id": "A020", "category": "Cenosco & Motiva", "description": "Send PEI connectivity test invite", "owner": "Roman", "due_date": "2026-06-05", "priority": "Medium", "status": "Done", "comments": ""}, {"source": "Tasks", "id": "A021", "category": "Cenosco & Motiva", "description": "Object types mapping (RCM and PEI)", "owner": "Motiva/ SAP", "due_date": "", "priority": "High", "status": "Done", "comments": "There're fields in SAP which represent the object type value. We need to refer to one of them. Motiva to decide which one will be assigned to the corresponding IMS value. Agreed that no object type\u2013based filtering will be applied for RCM and PEI integrations, and all data will be shared with both systems.\n\nClass field to be used"}, {"source": "Tasks", "id": "A022", "category": "Cenosco & Motiva", "description": "Set up the data alignment for PEI in stg for PEI and IMS", "owner": "Cenosco", "due_date": "2026-06-08", "priority": "High", "status": "Done", "comments": ""}, {"source": "Tasks", "id": "A023", "category": "Cenosco & Motiva", "description": "Motiva to fix payloads for notifications and work orders on RCM", "owner": "Cenosco", "due_date": "2026-06-10", "priority": "High", "status": "Done", "comments": "Notification was processed successfully but is not visible in the IMS screen. Investigation required (Igor & Sandi). Payload corrections for Notification and Work Order have been completed."}, {"source": "Tasks", "id": "A024", "category": "Cenosco & Motiva", "description": "EnteredBy and UserStatus - increase the lenght of these 2 fields / RCM SIT", "owner": "Cenosco", "due_date": "TBC", "priority": "High", "status": "Done", "comments": "Ticket added to the backlog (no CR needed).\nDomain expert to provide a recommendation on Monday. Motiva and SAP to confirm the max number of characters needed.\n\nSAP ID will be used for EnteredBy; UserStatus - pending verification."}, {"source": "Tasks", "id": "A025", "category": "Cenosco & Motiva", "description": "Provide a new SAP Floc and Equipment exports that includes the Class column", "owner": "Motiva/ SAP", "due_date": "2026-06-09", "priority": "High", "status": "Done", "comments": ""}, {"source": "Tasks", "id": "A026", "category": "Cenosco & Motiva", "description": "PEI acceptance: CMMS Connector bug / PEI 1&2 SIT", "owner": "Cenosco", "due_date": "2026-06-11", "priority": "High", "status": "Done", "comments": ""}, {"source": "Tasks", "id": "A027", "category": "Cenosco & Motiva", "description": "During mapping review, approximately 15000 duplicate equipment numbers were identified.", "owner": "Motiva/ SAP", "due_date": "2026-07-15", "priority": "Medium", "status": "Done", "comments": "Franjo to finalize Ross to verify 168 equipments (flag 5/6 and 6)"}, {"source": "Tasks", "id": "A028", "category": "Cenosco & Motiva", "description": "MDG Payload/ Priority - the param is in the payload but not used because currently our solution doesn't calculate Priority. It is done on SAP side. / PEI SIT", "owner": "Motiva/ SAP", "due_date": "", "priority": "Medium", "status": "Done", "comments": "Working session with the Domain Expert 16/06.\n\nCenosco to use the standard payload without the priority values. What Priority values are expected and based on what calculation? (not a Priority field, worst case - can be defaulted to one value)"}, {"source": "Tasks", "id": "A029", "category": "Cenosco & Motiva", "description": "Training / RCM & SIT", "owner": "Motiva/ SAP\nCenosco", "due_date": "2026-07-03", "priority": "Medium", "status": "Done", "comments": "Workshop dates confirmed: 27-29 July\n\n\nMeeting conducted on 29/06: Workshop/ awareness session focused on S4 integration, RCM and PEI:\nnew functionality introduced by the integration,\nchanges to existing workflows,\nnew buttons, screens and available information,\nhow users can utilize the new integration capabilities in their daily work. Motiva Team will provide:\nPRV work process (spare) -provided\nSAP Maintenance work process\nPEI work process - provided\nRCM work process"}, {"source": "Tasks", "id": "A030", "category": "Cenosco & Motiva", "description": "PEI Training x Data alignment: Maintenance Plan: Maintenance plans with associated schedules etc. (mapping file) + test case", "owner": "Cenosco", "due_date": "2026-07-24", "priority": "Medium", "status": "Done", "comments": "Meeting with Marko on Friday (+ training on 27/29 July)"}, {"source": "Tasks", "id": "A031", "category": "Cenosco & Motiva", "description": "Schedule SIT US 1&2 / PEI", "owner": "Motiva/ SAP", "due_date": "2026-06-26", "priority": "Medium", "status": "Done", "comments": "First PEI SIT done on 17/06\nSecond PEI SIT done on 18/06\nNext PEI SIT and final RCM SIT to be scheduled for 24/06\n\nRCM UAT scenarios are prepared, waiting for SITs to finish."}, {"source": "Tasks", "id": "A032", "category": "Cenosco & Motiva", "description": "Upgrade - list of changes / PEI & RCM", "owner": "Cenosco", "due_date": "2026-06-18", "priority": "Medium", "status": "Done", "comments": "Release Notes - self-registration: https://ims-handbook.cenosco.com/docs/where-are-the-release-notes"}, {"source": "Tasks", "id": "A033", "category": "Cenosco & Motiva", "description": "Motiva to validate the FLOC and EQU aligned with SAP Export / PEI", "owner": "Motiva/ SAP", "due_date": "2026-06-26", "priority": "Medium", "status": "Done", "comments": "Report sent by Antun 16/06 (email title: PEI IMS Migration Environment -  Data Alignment) Motiva/ SAP to review and approve the creation of PEI-relevant \"SAP Only\" equipment in the Production environment via the interface.\n\n23/06 Eq will be created via interface (SAP Only items in the delta report)"}, {"source": "Tasks", "id": "A034", "category": "Cenosco & Motiva", "description": "Clarification on how IMS schedules are linked to SAP Maintenance Plans requested.", "owner": "Cenosco", "due_date": "2026-06-24", "priority": "Medium", "status": "Done", "comments": "Cenosco will investigate the specific field/identifier used in the interface payload and provide feedback (Equipment as Technical Object Sort Code) rel to US 3 (Igor)\n\nValue shared by Igor"}, {"source": "Tasks", "id": "A035", "category": "Cenosco & Motiva", "description": "Motiva will provide a list of users requiring IMS Test Environment access for upcoming RCM UAT activities.", "owner": "Motiva/ SAP", "due_date": "2026-06-24", "priority": "Medium", "status": "Done", "comments": "Cenosco to add the users/ reported to support on 19/06.\n\nUsers added on 22/06. Jason.Butler@motiva.com\nChristopher.Mccloney@Motiva.Com\nMichael.Dill@Motiva.Com"}, {"source": "Tasks", "id": "A036", "category": "Cenosco & Motiva", "description": "RCM prod issue", "owner": "Cenosco", "due_date": "2026-06-23", "priority": "High", "status": "Done", "comments": "Ticket: IMSFB-61272 Asset is factor 0f 10 greater than what it was before the upgrade.\nUpdated - ticket for future upgrades (prevention) created.\nTicket executed. Motiva Team to confirm if fixed."}, {"source": "Tasks", "id": "A037", "category": "Cenosco & Motiva", "description": "Thursday's meetings", "owner": "Cenosco / Motiva", "due_date": "2026-06-24", "priority": "High", "status": "Done", "comments": "Meetings reschedule to 3:30 CEST?"}, {"source": "Tasks", "id": "A038", "category": "Cenosco & Motiva", "description": "RCM UAT Scenarios", "owner": "Cenosco / Motiva", "due_date": "2026-06-25", "priority": "High", "status": "Done", "comments": "Confirming UAT Scenarios - email to Jason, Chris and Michael sent on 23/06\nWill be a part of the demo (notifications + work orders)"}, {"source": "Tasks", "id": "A039", "category": "Cenosco & Motiva", "description": "RCA for Connector", "owner": "Cenosco", "due_date": "2026-06-25", "priority": "High", "status": "Done", "comments": "Sent with meeting minutes 25/06"}, {"source": "Tasks", "id": "A040", "category": "Cenosco & Motiva", "description": "Academy", "owner": "Motiva", "due_date": "2026-06-25", "priority": "Low", "status": "Done", "comments": "Academy: User Michael.Onufrow@Motiva.com not found/ IT PMO"}, {"source": "Tasks", "id": "A041", "category": "Cenosco & Motiva", "description": "PEI Implementation: Schedule SIT for PEI US 3 & 4", "owner": "Cenosco / Motiva", "due_date": "2026-07-24", "priority": "High", "status": "Done", "comments": "SIT US3 in progress (1/7, 2/7, 6/7, 9/7, 24/7)\nSIT US4 in progress (9/7, 10/7, 14/7, 15/7, 17/7, 24/07)"}, {"source": "Tasks", "id": "A042", "category": "Cenosco & Motiva", "description": "RCM UAT", "owner": "Cenosco / Motiva", "due_date": "2026-07-07", "priority": "High", "status": "Done", "comments": "Session scheduled for the 7/7"}, {"source": "Tasks", "id": "A043", "category": "Cenosco & Motiva", "description": "RCM + PEI", "owner": "Cenosco / Motiva", "due_date": "2026-07-03", "priority": "High", "status": "Done", "comments": "Cenosco would need a few days to prepare the production environment and the production shouldn't be used during that time. - Discussion and Decision needed"}, {"source": "Tasks", "id": "A044", "category": "Cenosco & Motiva", "description": "PEI SIT - Role change needed", "owner": "Cenosco / Motiva", "due_date": "2026-07-07", "priority": "Medium", "status": "Done", "comments": "User verification (Focal Point): Sanagavaram Chakradhar"}, {"source": "Tasks", "id": "A045", "category": "Cenosco & Motiva", "description": "PEI SIT - bug blocking US3 finalization", "owner": "Cenosco", "due_date": "2026-07-23", "priority": "High", "status": "Done", "comments": "(Test upgraded, rest in progress) Migration Release completed on 23/07"}, {"source": "Tasks", "id": "A046", "category": "Cenosco & Motiva", "description": "RCM UAT: UAT supporting sessions", "owner": "Cenosco / Motiva", "due_date": "2026-07-23", "priority": "High", "status": "Done", "comments": "Scenarios shared. First session on 14/7, 15/7, 16/7, 23/07"}, {"source": "Tasks", "id": "A047", "category": "Cenosco & Motiva", "description": "PEI Data alignment: Maintenance Plans data alignment", "owner": "Cenosco / Motiva", "due_date": "2026-07-31", "priority": "High", "status": "Deferred", "comments": "Antun to continue when the \"next inspection date\" is provided and when the FLOC and Equi delta is approved\nAll plans to be EI only Ross to provide one more export needed with the \"next inspection date\"\nTo be discussed with Marko Verdes"}, {"source": "Tasks", "id": "A048", "category": "Cenosco & Motiva", "description": "RCM UAT - ", "owner": "Cenosco", "due_date": "2026-07-31", "priority": "High", "status": "In progress", "comments": "1. Bug reported \"Time zones\" - in review with engineers (IMSD-35376) // mid-August release (around 20th)\nRetest in RCM when fixed.\n2. Separate preventive schedules created in IMS - payload to be modified (Sandi's solution)"}, {"source": "Tasks", "id": "A049", "category": "Cenosco & Motiva", "description": "RCM & PEI Data alignment", "owner": "Cenosco/ Motiva", "due_date": "2026-07-29", "priority": "High", "status": "In progress", "comments": "PEI: Antun to run a vlookup to map Manufacturer/ Supplier"}, {"source": "Tasks", "id": "A050", "category": "Cenosco & Motiva", "description": "PEI UAT: add users and share UAT scenarios", "owner": "Cenosco", "due_date": "2026-07-21", "priority": "High", "status": "Done", "comments": "Joanna added: \nCraig.Gobart@motiva.com\ntodd.bellanger@motiva.com\nSamuel.Ludwig@Motiva.Com\nto https://ims-pei-portarthur-mig.cenosco.software/\n\nand shared the UAT scenarios: https://cenosco.sharepoint.com/:x:/r/sites/ProfessionalServices/_layouts/15/doc2.aspx?sourcedoc=%7BA06B516B-5410-46C4-AF81-FADD77DF95DC%7D&file=UAT%20-%20PEI%20scenarios.xlsx&action=default&mobileredirect=true"}, {"source": "Tasks", "id": "A051", "category": "Cenosco & Motiva", "description": "PEI Demo to be scheduled when SIT is completed", "owner": "Cenosco", "due_date": "2026-08-03", "priority": "Medium", "status": "Open", "comments": "To be scheduled w/c 27th when SIT PEI is successfully completed\nMoved to 3/08 as Sam is ooo"}, {"source": "Tasks", "id": "A052", "category": "Cenosco & Motiva", "description": "PEI UAT: session to be scheduled after Data alignment", "owner": "Cenosco", "due_date": "2026-08-07", "priority": "Medium", "status": "Open", "comments": "Dependent on A047 and A049"}, {"source": "Tasks", "id": "A053", "category": "Cenosco & Motiva", "description": "Data alignment: S4 Object Type vs S4 Class", "owner": "Cenosco", "due_date": "2026-07-24", "priority": "Medium", "status": "Done", "comments": "Confirm/ Fix the data being sent to IMS"}, {"source": "Tasks", "id": "A054", "category": "Cenosco & Motiva", "description": "Error handling approach", "owner": "Cenosco / Motiva", "due_date": "2026-07-28", "priority": "High", "status": "Done", "comments": "Cenosco to follow up with the product Team Motiva to discuss internally"}, {"source": "Tasks", "id": "A055", "category": "Cenosco & Motiva", "description": "Hierarchy changes", "owner": "Cenosco / Motiva", "due_date": "2026-07-28", "priority": "High", "status": "In progress", "comments": "Pending verification"}, {"source": "Tasks", "id": "A056", "category": "Cenosco & Motiva", "description": "Inactive equipment", "owner": "Cenosco / Motiva", "due_date": "2026-07-28", "priority": "High", "status": "In progress", "comments": "PEI equipment not in IMS, to be created in IMS set as inspection reason CLASS 4 and label \u201cSAP clean up\u201d. Agreed to match IMS and SAP active status. Equipment was marked as inactive in the Production IMS, but in the Migration IMS it was marked as active, because this is its current status in SAP. The goal is this equipment not to be reactivated."}, {"source": "Tasks", "id": "A057", "category": "Cenosco & Motiva", "description": "PEI SIT: Results", "owner": "Cenosco / Motiva", "due_date": "2026-07-29", "priority": "High", "status": "Added to A051", "comments": "Three scenarios were initially expected to result in no interface being triggered when a Schedule associated with a Maintenance Plan and Work Order is deactivated or deleted. \n\nDuring testing, the interface was triggered, and a Change Request was sent to S/4HANA. However, the Change Request remains subject to the standard approval process and can be either approved or rejected. If rejected, no change is applied in S/4HANA. If approved, the Maintenance Plan status is updated with either a deactivation or deletion flag, depending on the action. \n\nCustomer feedback is required to confirm whether the current behavior is suitable for the planned business process."}, {"source": "Tasks", "id": "A058", "category": "Cenosco & Motiva", "description": "Notification type set up to Y1 and Y3 CAIR/Schedules", "owner": "Cenosco", "due_date": "2026-07-31", "priority": "High", "status": "Open", "comments": "Initial conclusion is that this is not configurable and would require development to accommodate. This needs to be confirmed. [CHANGE REQUEST] SAP team need to create Notification type Y5, this to be used with Category 1 schedules/CAIRs. The rest of the schedules Cat 2 and 3 will be sent with Y3 notification type request. Action: assure the default is Y3 Cat 2/3 and Y5 for Category 1."}, {"source": "Tasks", "id": "A059", "category": "Cenosco & Motiva", "description": "SAP Release date set up to 365 days", "owner": "Cenosco", "due_date": "2026-07-31", "priority": "High", "status": "Done", "comments": ""}, {"source": "Tasks", "id": "A060", "category": "Cenosco & Motiva", "description": "Priority set to routine 5 (from IMS to SAP)", "owner": "Cenosco", "due_date": "2026-07-31", "priority": "High", "status": "Open", "comments": ""}, {"source": "Tasks", "id": "A061", "category": "Cenosco & Motiva", "description": "ABC indicator change to a new table", "owner": "Cenosco", "due_date": "2026-07-31", "priority": "High", "status": "Open", "comments": "This is configurable through IMS's settings. We currently have the old and new mappings. The new ones need to be checked in both PEI and RCM environments, e.g. ABC ind \"D\" is missing in RCM. Note: the character limit for the description is 30 characters,. Recommended: keep the old mappings just in case it's sent from SAP in the future"}, {"source": "Tasks", "id": "A062", "category": "Cenosco & Motiva", "description": "Reporting (Error handling)", "owner": "Cenosco", "due_date": "", "priority": "High", "status": "Open", "comments": "Cenosco (Joanna) to build a query prior to go-live and add\u00a0Motiva PEI Dashboard Schedules with ERROR CMMS status."}, {"source": "Tasks", "id": "A063", "category": "Cenosco & Motiva", "description": "Fulflo valves", "owner": "Motiva", "due_date": "", "priority": "High", "status": "Open", "comments": "Need to find them in IMS, then create the SAP Object Type \u201cM_VLV_REG\u201d (or similar), update SAP with Fulflo type OT and make them visible only in RCM per OT mapping. Action: Motiva to create SAP OT, Cenosco to update CMMS type based on Motiva guidance."}, {"source": "RAID", "id": "R001", "category": "Risk", "description": "ABC Indicator mapping issue may delay completion of RCM SIT if not resolved before the next test session. / Upgrade done, but connector's being checked", "owner": "Cenosco", "due_date": "", "priority": "High", "status": "Done", "comments": "Issue being worked on/ System to be upgraded on 15/06 - done.\nConnector in review 16/06.\n19/06 Connector retested - ok to continue with SIT and UAT."}, {"source": "RAID", "id": "R002", "category": "Risk", "description": "Notification payloads are processed successfully but are not visible in IMS, preventing successful completion of related RCM SIT scenarios.", "owner": "Cenosco", "due_date": "", "priority": "", "status": "Done", "comments": "Solved"}, {"source": "RAID", "id": "R003", "category": "Risk", "description": "CMMS Connector bug is impacting PEI SIT User Stories 1 & 2 and may affect PEI testing progress.", "owner": "Cenosco", "due_date": "", "priority": "High", "status": "Done", "comments": "Solved"}, {"source": "RAID", "id": "R004", "category": "Risk", "description": "EnteredBy and UserStatus field length limitations may impact Work Order processing and RCM SIT completion if a suitable solution is not identified.", "owner": "Cenosco", "due_date": "", "priority": "Medium", "status": "Done", "comments": "Implementing 2 tasks:\n- technical evaluation of the change\n- looking for an alternative with SMEs\n\nIn order to complete SIT: We will test with lower values (less characters)."}, {"source": "RAID", "id": "R005", "category": "Risk", "description": "UAT delayed as a result of extended SIT phase.", "owner": "Cenosco", "due_date": "", "priority": "Medium", "status": "Done", "comments": "Joint session with Cenosco offered"}, {"source": "RAID", "id": "R006", "category": "Risk", "description": "Delay in PEI SIT due to late hierarchy prep", "owner": "Motiva / Cenosco", "due_date": "", "priority": "High", "status": "Done", "comments": "Mitigated - progressed with US 1&2 SIT (70% complete)"}, {"source": "RAID", "id": "R007", "category": "Risk", "description": "Delay in Maintenance Plan - Schedule mapping", "owner": "Motiva", "due_date": "", "priority": "High", "status": "In progress", "comments": "Sessions with DE"}, {"source": "RAID", "id": "R008", "category": "Risk", "description": "RCM and PEI Teams not aware of the data changes caused by the data alignment", "owner": "Motiva / Cenosco", "due_date": "", "priority": "High", "status": "Done", "comments": "Additional sessions with PEI and RCM Teams, data refresh based on new SAP exports and an additional reviews"}, {"source": "RAID", "id": "R009", "category": "Risk", "description": "Hierarchy changes requested by Ross", "owner": "Motiva / Cenosco", "due_date": "", "priority": "Medium", "status": "Open", "comments": "Review with DE"}, {"source": "RAID", "id": "R010", "category": "Risk", "description": "Error handling mechanisms - Alerting system being not sufficient", "owner": "Motiva / Cenosco", "due_date": "", "priority": "High", "status": "Open", "comments": "Igor explained that IMS currently retries communication failures automatically but does not provide automated alerting for data processing failures after data reaches the staging area. Such issues are currently detected by end users through normal business activities and reported via support tickets. The SAP team expressed concerns that this approach may not be sufficient for transactional data, where unnoticed failures could remain in the staging area. It was agreed that this limitation reflects the current solution architecture and requires further discussion to determine whether additional monitoring capabilities should be introduced in the future.\nThere is a possibility to export the data from SAP and IMS to compare whether the same data is present in both systems.\n\nMotiva Team and Cenosco Team to discuss internally."}, {"source": "RAID", "id": "I001", "category": "Issue", "description": "Approximately 15k duplicate equipment numbers identified during mapping review. IMS does not allow duplicate equipment numbers.", "owner": "Motiva / Cenosco", "due_date": "", "priority": "Medium", "status": "Done", "comments": "Report sent by Cenosco (on 11/06 and 15/06). Delay in RCM data alignment."}, {"source": "RAID", "id": "I002", "category": "Issue", "description": "Additional SAP exports containing the Class field are required to validate CMMS Type mapping.", "owner": "Motiva / SAP", "due_date": "", "priority": "Low", "status": "Done", "comments": "Motiva to export new reports."}, {"source": "RAID", "id": "I003", "category": "Issue", "description": "Bug in migr RCM blocks the US3 SIT PEI completion", "owner": "Cenosco", "due_date": "", "priority": "High", "status": "Done", "comments": "Fix to be released with 4.12 - release planned for 21/07"}, {"source": "RAID", "id": "D001", "category": "Dependency", "description": "Historical notification migration approach requires final confirmation and planning.", "owner": "Motiva / Cenosco", "due_date": "", "priority": "", "status": "Done", "comments": "Import unnecessary - deferred."}, {"source": "RAID", "id": "D002", "category": "Dependency", "description": "New SAP FLOC and Equipment exports with Class field required to complete mapping validation.", "owner": "Motiva / SAP", "due_date": "", "priority": "", "status": "Done", "comments": ""}, {"source": "RAID", "id": "D003", "category": "Dependency", "description": "Engineering assessment required to determine feasibility, effort, and timeline impact of the EnteredBy/UserStatus Change Request.", "owner": "Cenosco", "due_date": "", "priority": "", "status": "Done", "comments": ""}, {"source": "RAID", "id": "D004", "category": "Dependency", "description": "Consolidated project plan required to align SIT, UAT, Deployment, and Go-Live timelines across all parties.", "owner": "Cenosco / KaarTech", "due_date": "", "priority": "", "status": "Done", "comments": "Joanna meets with Kunal on 15/06.\nBased on the meeting both teams will review the tasks and dependencies in details."}, {"source": "RAID", "id": "D005", "category": "Dependency", "description": "Maintenance Plans to be provided by Motiva / PEI to continue with Schedule delta and alignment", "owner": "Motiva / SAP", "due_date": "", "priority": "Medium", "status": "Done", "comments": "Maintenance plans to be paired with Schedules by Ross."}, {"source": "RAID", "id": "DEC001", "category": "Decision", "description": "Historical notifications will be migrated to IMS using the existing integration mechanism.", "owner": "Joint", "due_date": "", "priority": "", "status": "Done", "comments": ""}, {"source": "RAID", "id": "DEC002", "category": "Decision", "description": "SAP Class field will be used as the source field for the IMS CMMS Type mapping.", "owner": "Joint", "due_date": "", "priority": "", "status": "Done", "comments": ""}, {"source": "RAID", "id": "DEC003", "category": "Decision", "description": "No object type-based filtering will be applied for PEI and RCM integrations.", "owner": "Joint", "due_date": "", "priority": "", "status": "Done", "comments": ""}, {"source": "RAID", "id": "DEC004", "category": "Decision", "description": "Refresher training will be provided and scoped separately from the integration delivery activities.", "owner": "Joint", "due_date": "", "priority": "", "status": "Done", "comments": "Agreed to provide the dedicated training."}, {"source": "RAID", "id": "DEC005", "category": "Decision", "description": "Reschedule the RCM UAT to w/c 6/7 instead of 29/06", "owner": "Motiva", "due_date": "", "priority": "", "status": "Done", "comments": "Both UATs planned for the same week commencing 6/7, may need to extend the timeline to accomodate both."}, {"source": "Entry & Exit", "id": "RCM-Data alignment-Exit \u2191", "category": "RCM / Data alignment", "description": "1. RCM Delta reviewed by Motiva;  [Exit \u2191]", "owner": "", "due_date": "", "priority": "", "status": "Preparation", "comments": ""}, {"source": "Entry & Exit", "id": "PEI-Data alignment-Entry \u2193", "category": "PEI / Data alignment", "description": "1. PEI Delta analysis updated with based on Motiva's feedback and available;  [Entry \u2193]", "owner": "", "due_date": "", "priority": "", "status": "Preparation", "comments": ""}, {"source": "Entry & Exit", "id": "PEI-Data alignment-Exit \u2191", "category": "PEI / Data alignment", "description": "1. PEI Delta reviewed by Motiva;  [Exit \u2191]", "owner": "", "due_date": "", "priority": "", "status": "Not started", "comments": ""}, {"source": "Entry & Exit", "id": "RCM-UAT Retest-Entry \u2193", "category": "RCM / UAT Retest", "description": "1. IMS 4.12/time-zone fix deployed and successfully passed QA;  [Entry \u2193]", "owner": "", "due_date": "", "priority": "", "status": "Preparation", "comments": "Time-zone issue pending fixes."}, {"source": "Entry & Exit", "id": "RCM-UAT Retest-Exit \u2191", "category": "RCM / UAT Retest", "description": "1. US3 and US4 successfully retested with correct date/time handling;  [Exit \u2191]", "owner": "", "due_date": "", "priority": "", "status": "Preparation", "comments": ""}, {"source": "Entry & Exit", "id": "PEI-UAT-Entry \u2193", "category": "PEI / UAT", "description": "1. PEI SIT completed and signed off;  [Entry \u2193]", "owner": "", "due_date": "", "priority": "", "status": "Preparation", "comments": ""}, {"source": "Entry & Exit", "id": "PEI-UAT-Exit \u2191", "category": "PEI / UAT", "description": "1. All agreed PEI UAT scenarios executed successfully;  [Exit \u2191]", "owner": "", "due_date": "", "priority": "", "status": "Not started", "comments": ""}, {"source": "Entry & Exit", "id": "RCM & PEI-Go-Live-Entry \u2193", "category": "RCM & PEI / Go-Live", "description": "1. RCM and PEI UAT signed off;  [Entry \u2193]", "owner": "", "due_date": "", "priority": "", "status": "Not started", "comments": ""}, {"source": "Entry & Exit", "id": "RCM & PEI-Go-Live-Exit \u2191", "category": "RCM & PEI / Go-Live", "description": "1. Production data alignment and interface deployment completed;  [Exit \u2191]", "owner": "", "due_date": "", "priority": "", "status": "Not started", "comments": ""}, {"source": "Entry & Exit", "id": "RCM & PEI-Project closure-Entr", "category": "RCM & PEI / Project closure", "description": "1. Go-live successfully completed; [Entry \u2193]", "owner": "", "due_date": "", "priority": "", "status": "Not started", "comments": ""}, {"source": "Entry & Exit", "id": "RCM & PEI-Project closure-Exit", "category": "RCM & PEI / Project closure", "description": "1. All issues identified during the hypercare are addresses and resolved; [Exit \u2191]", "owner": "", "due_date": "", "priority": "", "status": "Not started", "comments": ""}];
+const TODAY = new Date('2026-08-05T00:00:00');
+
+document.getElementById('asOf').textContent += ' · Data as of ' + TODAY.toDateString();
+
+const DONE_STATUSES = ['done','approved'];
+
+function colorFor(item){
+  const st = (item.status||'').toLowerCase();
+  if (DONE_STATUSES.includes(st)) return 'green';
+  if (item.due_date){
+    const dt = new Date(item.due_date+'T00:00:00');
+    if (!isNaN(dt) && dt < TODAY) return 'red';
+  }
+  if (!item.status) return 'gray';
+  return 'orange';
+}
+
+RAW.forEach((it, idx) => { it._key = idx; });
+
+// --- Inline-edit overrides (persisted per-browser via localStorage) ---
+function loadOverrides(){
+  try{ return JSON.parse(localStorage.getItem('ims-overrides') || '{}'); }catch(e){ return {}; }
+}
+function saveOverrides(obj){
+  try{ localStorage.setItem('ims-overrides', JSON.stringify(obj)); }catch(e){}
+}
+let OVERRIDES = loadOverrides();
+RAW.forEach(it=>{
+  const ov = OVERRIDES[it._key];
+  if (ov){
+    if (ov.status !== undefined) it.status = ov.status;
+    if (ov.due_date !== undefined) it.due_date = ov.due_date;
+  }
+});
+
+function setOverride(key, field, value){
+  OVERRIDES[key] = OVERRIDES[key] || {};
+  OVERRIDES[key][field] = value;
+  saveOverrides(OVERRIDES);
+}
+
+function resetEdits(){
+  if (!confirm('Reset all status/due-date edits made in this browser back to the original workbook values?')) return;
+  OVERRIDES = {};
+  saveOverrides(OVERRIDES);
+  location.reload();
+}
+
+const ALL_STATUSES = [...new Set(RAW.map(i=>i.status).filter(Boolean))].sort();
+
+RAW.forEach(it => { it.color = colorFor(it); });
+
+// populate filter dropdowns
+const sources = [...new Set(RAW.map(i=>i.source))];
+const owners = [...new Set(RAW.map(i=>i.owner).filter(Boolean))].sort();
+const fSource = document.getElementById('fSource');
+sources.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; fSource.appendChild(o); });
+const fOwner = document.getElementById('fOwner');
+owners.forEach(o=>{ const el=document.createElement('option'); el.value=o; el.textContent=o; fOwner.appendChild(el); });
+
+let sortKey = null, sortDir = 1;
+
+function currentFilters(){
+  return {
+    source: document.getElementById('fSource').value,
+    color: document.getElementById('fColor').value,
+    owner: document.getElementById('fOwner').value,
+    q: document.getElementById('fSearch').value.trim().toLowerCase(),
+  };
+}
+
+function applyFilters(){
+  const f = currentFilters();
+  let rows = RAW.filter(i=>{
+    if (f.source && i.source!==f.source) return false;
+    if (f.color && i.color!==f.color) return false;
+    if (f.owner && i.owner!==f.owner) return false;
+    if (f.q){
+      const hay = (i.id+' '+i.description+' '+i.comments+' '+i.owner+' '+i.category).toLowerCase();
+      if (!hay.includes(f.q)) return false;
+    }
+    return true;
+  });
+  if (sortKey){
+    rows.sort((a,b)=>{
+      let av=(a[sortKey]||''), bv=(b[sortKey]||'');
+      if (sortKey==='due_date'){ av = av || '9999-99-99'; bv = bv || '9999-99-99'; }
+      if (av<bv) return -1*sortDir;
+      if (av>bv) return 1*sortDir;
+      return 0;
+    });
+  }
+  return rows;
+}
+
+function srcClass(s){
+  if (s==='Replanning') return 'Replanning';
+  if (s==='Tasks') return 'Tasks';
+  if (s==='RAID') return 'RAID';
+  return 'Entry';
+}
+
+// --- Local storage helpers (works when hosted anywhere, incl. SharePoint) ---
+function getEmail(owner){
+  try{ return localStorage.getItem('ims-owner-email:'+owner); }catch(e){ return null; }
+}
+function setEmail(owner, email){
+  try{ localStorage.setItem('ims-owner-email:'+owner, email); }catch(e){}
+}
+function getFlowUrl(){
+  try{ return localStorage.getItem('ims-flow-url') || ''; }catch(e){ return ''; }
+}
+function setFlowUrl(url){
+  try{ localStorage.setItem('ims-flow-url', url); }catch(e){}
+}
+
+function saveDirEntry(){
+  const name = document.getElementById('dirName').value.trim();
+  const email = document.getElementById('dirEmail').value.trim();
+  if (!name || !email){ toast('Enter both a name and an email'); return; }
+  setEmail(name, email);
+  toast('Saved email for '+name);
+  document.getElementById('dirName').value='';
+  document.getElementById('dirEmail').value='';
+  render();
+}
+
+function saveFlowUrl(){
+  const url = document.getElementById('flowUrl').value.trim();
+  setFlowUrl(url);
+  toast(url ? 'Flow URL saved — Email buttons will send via Power Automate' : 'Flow URL cleared — Email buttons will use mailto drafts');
+}
+
+// pre-fill saved flow URL on load
+(function(){ const v = getFlowUrl(); if (v) document.getElementById('flowUrl').value = v; })();
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function getEmailMethod(){
+  try{ return localStorage.getItem('ims-email-method') || 'owa'; }catch(e){ return 'owa'; }
+}
+function setEmailMethod(v){
+  try{ localStorage.setItem('ims-email-method', v); }catch(e){}
+}
+(function(){
+  const sel = document.getElementById('emailMethod');
+  sel.value = getEmailMethod();
+  sel.addEventListener('change', ()=>setEmailMethod(sel.value));
+})();
+
+function mailtoFallback(email, subject, body){
+  const method = getEmailMethod();
+  if (method === 'owa'){
+    const url = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(email)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank');
+  } else {
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+}
+
+async function emailOwner(item, btn){
+  let email = getEmail(item.owner);
+  if (!email){
+    const typed = prompt(`No saved email for "${item.owner}". Enter one (it will be remembered on this device):`, '');
+    if (!typed) return;
+    setEmail(item.owner, typed);
+    email = typed;
+    render();
+  }
+
+  const subject = `IMS Action ${item.id}: ${item.description.slice(0,60)}`;
+  const body =
+`Hi,
+
+Following up on action item ${item.id} (${item.source}):
+${item.description}
+
+Status: ${item.status || 'n/a'}
+Due date: ${item.due_date || 'n/a'}
+
+Could you please provide an update?
+
+Thanks`;
+
+  const flowUrl = getFlowUrl();
+  if (!flowUrl){
+    mailtoFallback(email, subject, body);
+    return;
+  }
+
+  const originalText = btn.textContent;
+  btn.textContent = 'Sending…';
+  btn.disabled = true;
+  try{
+    const resp = await fetch(flowUrl, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        to: email,
+        subject: subject,
+        body: body,
+        actionId: item.id,
+        source: item.source,
+        owner: item.owner,
+        status: item.status,
+        dueDate: item.due_date
+      })
+    });
+    if (resp.ok){
+      toast(`Sent via flow to ${email}`);
+    } else {
+      toast(`Flow returned an error (${resp.status}) — opening mail draft instead`);
+      mailtoFallback(email, subject, body);
+    }
+  } catch(e){
+    toast('Could not reach the flow (likely blocked by CORS) — opening mail draft instead');
+    mailtoFallback(email, subject, body);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+function statusOptionsHtml(current){
+  const opts = ALL_STATUSES.includes(current) ? ALL_STATUSES : [...ALL_STATUSES, current].filter(Boolean);
+  return opts.map(s=>`<option value="${s}" ${s===current?'selected':''}>${s}</option>`).join('');
+}
+
+function onEditStatus(sel, key){
+  const it = RAW.find(r=>r._key===key);
+  it.status = sel.value;
+  setOverride(key, 'status', sel.value);
+  it.color = colorFor(it);
+  render();
+}
+
+function onEditDue(inp, key){
+  const it = RAW.find(r=>r._key===key);
+  it.due_date = inp.value; // yyyy-mm-dd or ''
+  setOverride(key, 'due_date', inp.value);
+  it.color = colorFor(it);
+  render();
+}
+
+function render(){
+  const rows = applyFilters();
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  rows.forEach(it=>{
+    const tr = document.createElement('tr');
+    tr.className = it.color;
+    const overdueTag = (it.color==='red') ? ` <span class="overdue-tag">OVERDUE</span>` : '';
+    tr.innerHTML = `
+      <td><span class="src ${srcClass(it.source)}">${it.source}</span></td>
+      <td>${it.id}</td>
+      <td>${it.category||''}</td>
+      <td class="desc" title="${(it.comments||'').replace(/"/g,'&quot;')}">${it.description}${it.comments? '<br><span style=\"color:#8b95a1;font-size:11.5px;\">'+it.comments.slice(0,120)+(it.comments.length>120?'…':'')+'</span>' : ''}</td>
+      <td class="owner">${it.owner||'—'}</td>
+      <td class="due"></td>
+      <td></td>
+      <td class="email"></td>
+    `;
+    const dueTd = tr.children[5];
+    const dateInp = document.createElement('input');
+    dateInp.type = 'date';
+    dateInp.className = 'edit-date';
+    const dv = /^\d{4}-\d{2}-\d{2}$/.test(it.due_date||'') ? it.due_date : '';
+    dateInp.value = dv;
+    dateInp.title = 'Click to change the due date';
+    dateInp.addEventListener('change', ()=>onEditDue(dateInp, it._key));
+    dueTd.appendChild(dateInp);
+    if (!dv && it.due_date){ const raw=document.createElement('span'); raw.style.cssText='margin-left:4px;color:#8b95a1;font-size:11px;'; raw.textContent=it.due_date; dueTd.appendChild(raw); }
+    dueTd.insertAdjacentHTML('beforeend', overdueTag);
+
+    const statusTd = tr.children[6];
+    const sel = document.createElement('select');
+    sel.className = 'edit-select badge ' + it.color;
+    sel.innerHTML = statusOptionsHtml(it.status);
+    sel.title = 'Click to update status';
+    sel.addEventListener('change', ()=>onEditStatus(sel, it._key));
+    statusTd.appendChild(sel);
+
+    const emailTd = tr.querySelector('.email');
+    if (it.owner){
+      const btn = document.createElement('button');
+      btn.className='emailbtn';
+      btn.textContent='✉ Email';
+      btn.onclick = ()=>emailOwner(it, btn);
+      emailTd.appendChild(btn);
+    }
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('countRow').textContent = `Showing ${rows.length} of ${RAW.length} action items · click any Due date or Status cell to edit`;
+
+  // cards
+  const total = RAW.length;
+  const red = RAW.filter(i=>i.color==='red').length;
+  const orange = RAW.filter(i=>i.color==='orange').length;
+  const green = RAW.filter(i=>i.color==='green').length;
+  const gray = RAW.filter(i=>i.color==='gray').length;
+  document.getElementById('cards').innerHTML = `
+    <div class="card total"><div class="num">${total}</div><div class="lbl">Total items</div></div>
+    <div class="card red"><div class="num">${red}</div><div class="lbl">Overdue</div></div>
+    <div class="card orange"><div class="num">${orange+gray}</div><div class="lbl">In progress / pending</div></div>
+    <div class="card green"><div class="num">${green}</div><div class="lbl">Completed</div></div>
+    <div class="card"><div class="num">${owners.length}</div><div class="lbl">Distinct owners</div></div>
+    <div class="card"><div class="num">${sources.length}</div><div class="lbl">Source sheets</div></div>
+  `;
+
+  renderProgressBars();
+}
+
+function segHtml(counts, total){
+  const pct = n => total ? (n/total*100) : 0;
+  let html = '';
+  ['red','orange','green','gray'].forEach(c=>{
+    const n = counts[c]||0;
+    if (n>0) html += `<div class="pbar-seg ${c}" style="width:${pct(n)}%" title="${n}"></div>`;
+  });
+  return html;
+}
+
+function countsFor(items){
+  const c = {red:0,orange:0,green:0,gray:0};
+  items.forEach(i=>{ c[i.color] = (c[i.color]||0)+1; });
+  return c;
+}
+
+function renderProgressBars(){
+  const total = RAW.length;
+  const overall = countsFor(RAW);
+  document.getElementById('overallBar').innerHTML = `
+    <div class="overall-bar">
+      <div class="pbar-track">${segHtml(overall, total)}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--ink-soft);">
+        <span>${overall.green} done · ${overall.orange+overall.gray} in progress/pending · ${overall.red} overdue</span>
+        <span>${total ? Math.round(overall.green/total*100) : 0}% complete</span>
+      </div>
+    </div>`;
+
+  // by source
+  const bySource = sources.map(s=>{
+    const items = RAW.filter(i=>i.source===s);
+    return {label:s, items, counts: countsFor(items)};
+  });
+  document.getElementById('bySourceBars').innerHTML = bySource.map(g=>`
+    <div class="pbar-row">
+      <span class="plabel">${g.label}</span>
+      <div class="pbar-track">${segHtml(g.counts, g.items.length)}</div>
+      <span class="pbar-count">${g.counts.green}/${g.items.length} done</span>
+    </div>
+  `).join('');
+
+  // by owner (top 12 by item count)
+  const ownerCounts = owners.map(o=>({owner:o, items: RAW.filter(i=>i.owner===o)}))
+    .sort((a,b)=>b.items.length-a.items.length)
+    .slice(0,12);
+  document.getElementById('byOwnerBars').innerHTML = ownerCounts.map(g=>{
+    const c = countsFor(g.items);
+    return `
+    <div class="pbar-row">
+      <span class="plabel" title="${g.owner}">${g.owner}</span>
+      <div class="pbar-track">${segHtml(c, g.items.length)}</div>
+      <span class="pbar-count">${c.green}/${g.items.length} done</span>
+    </div>`;
+  }).join('');
+}
+
+document.querySelectorAll('thead th[data-k]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const k = th.dataset.k;
+    if (sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=1; }
+    render();
+  });
+});
+
+['fSource','fColor','fOwner'].forEach(id=>document.getElementById(id).addEventListener('change', render));
+document.getElementById('fSearch').addEventListener('input', render);
+
+render();
+</script>
+</body>
+</html>
